@@ -1,29 +1,29 @@
 import requests, zipfile, io, os, time
 import pandas as pd
 
-def pickle_data(data_file):
+def pickle_data( data_file, sampling='15T' ):
     dff = pd.read_csv('{}'.format(data_file), header=None)
-    dff = dff.rename(columns = {0: "pair", 1: "datetime", 2: "bid", 3: "ask"})
+    dff = dff.rename(columns={0: "pair", 1: "datetime", 2: "bid", 3: "ask"})
 
     dff.datetime = pd.to_datetime(dff.datetime)
     dff = dff.set_index('datetime')
     dff['price'] = dff[['bid', 'ask']].mean(axis=1)
     dff = dff.drop(columns=['bid', 'ask'])
 
-    _open = dff.resample('1T').first().price
-    _close = dff.resample('1T').last().price
-    _high = dff.resample('1T').max().price
-    _low = dff.resample('1T').min().price
-    _vol = dff.resample('1T').count().price
+    _open = dff.resample(sampling).first().price
+    _close = dff.resample(sampling).last().price
+    _high = dff.resample(sampling).max().price
+    _low = dff.resample(sampling).min().price
+    _vol = dff.resample(sampling).count().price
 
-    dff = dff.resample('1T').first()
-    dff['open'] =_open
+    dff = dff.resample(sampling).first()
+    dff['open'] = _open
     dff['close'] = _close
     dff['high'] = _high
     dff['low'] = _low
     dff['volume'] = _vol
     dff = dff.drop(columns=['price'])
-    
+
     dff = dff.fillna(method='ffill')
 
     dff.to_pickle(data_file.split('.csv')[0] + '.pickle')
