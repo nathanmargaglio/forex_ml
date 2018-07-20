@@ -1,7 +1,9 @@
 import requests, zipfile, io, os, time
 import pandas as pd
 
-def pickle_data( data_file, sampling='15T' ):
+def pickle_data( data_file, sampling='15T', pickle_filename=None ):
+    if not pickle_filename:
+        pickle_filename = data_file.split('.csv')[0] + '.pickle'
     dff = pd.read_csv('{}'.format(data_file), header=None)
     dff = dff.rename(columns={0: "pair", 1: "datetime", 2: "bid", 3: "ask"})
 
@@ -26,7 +28,7 @@ def pickle_data( data_file, sampling='15T' ):
 
     dff = dff.fillna(method='ffill')
 
-    dff.to_pickle(data_file.split('.csv')[0] + '.pickle')
+    dff.to_pickle(pickle_filename)
 
 pairs = ['AUDJPY', 'AUDNZD', 'AUDUSD', 'CADJPY', 'CHFJPY', 'EURGBP', 'EURJPY', 'EURUSD', 'GBPJPY', 'GBPUSD', 'NZDUSD', 'USDCAD']
 years = ['2012', '2013', '2014', '2015', '2016', '2017']
@@ -38,8 +40,15 @@ processed = [f.split('.pickle')[0] for f in os.listdir('data')]
 
 for year in years:
     for m, month in enumerate(months):
+        month_num = str(m+1).zfill(2)
         for pair in pairs:
             print("{}: {} {} - {}".format(time.ctime(), month, year, pair))
+            pickle_filename = "{}-{}-{}.pickle".format(pair, year, month_num)
+            
+            if pickle_filename in current_files:
+                print(pickle_filename + " already generated!")
+                continue
+
             base_url = "http://truefx.com/dev/data/"
             url = base_url + "{}/{}-{}/{}-{}-{:02}.zip".format(year, month, year, pair, year, m+1)
             alt_url = base_url + "{}/{}-{:02}/{}-{}-{:02}.zip".format(year, year, m+1, pair, year, m+1)
@@ -67,7 +76,9 @@ for year in years:
                     print("Extracting...")
                     z.extractall('data')
 
-                pickle_data(data_file)
+                pickle_data(data_file, pickle_filename='data/' + pickle_filename)
                 os.remove(data_file)
+            except (KeyboardInterrupt, SystemExit):
+                raise
             except:
                 print("Error at " + url)
