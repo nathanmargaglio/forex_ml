@@ -11,9 +11,9 @@ def get_pickle(pairs=None, years=None, months=None, directory='data'):
             param = [param]
         return param
 
-    def filter_files(params, files=[]):
+    def filter_files(params, _dir, files=[]):
         _files = []
-        data_files = [f for f in os.listdir('data') if '.pickle' in f]
+        data_files = [f for f in os.listdir(_dir) if '.pickle' in f]
         for param in cast_to_array(params):
             if not param:
                 break
@@ -25,13 +25,16 @@ def get_pickle(pairs=None, years=None, months=None, directory='data'):
             files += _files
         return files
 
-    files = []
-    files = filter_files(pairs, files)
-    files = filter_files(years, files)
-    files = filter_files(months, files)
-
     if directory[-1] != '/':
         directory += '/'
+
+    if pairs or years or months:
+        files = []
+        files = filter_files(pairs, directory, files)
+        files = filter_files(years, directory, files)
+        files = filter_files(months, directory, files)
+    else:
+        files = [f for f in os.listdir(directory) if '.pickle' in f]
 
     df = None
     for f in files:
