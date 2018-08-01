@@ -158,8 +158,9 @@ class Environment:
 
         df = data.join(ds)
 
+        df = df[~df.isnull().any(axis=1)]
         # init portfolio
-        df.portfolio = 0.0
+        df['portfolio'] = 0.0
         df.at[df.index[0], 'portfolio'] = 1000.0
         df.pos_short = 0
         df.pos_neutral = 0
