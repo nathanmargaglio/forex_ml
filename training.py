@@ -1,6 +1,7 @@
 from keras.models import Sequential
 from keras.layers import *
 from keras.optimizers import *
+from keras.initializers import *
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -40,9 +41,15 @@ class Brain:
     def _createModel(self):
         model = Sequential()
 
-        model.add(Dense(output_dim=128, activation='relu', input_dim=self.stateCnt))
-        model.add(Dense(output_dim=128, activation='relu'))
-        model.add(Dense(output_dim=self.actionCnt, activation='linear'))
+        model.add(Reshape(target_shape=(1, self.stateCnt)))
+        model.add(Dense(output_dim=256, activation='relu', input_shape=(1, self.stateCnt),
+            kernel_initializer='ones', bias_initializer='zeros'))
+        model.add(Dense(output_dim=256, activation='relu',
+            kernel_initializer='ones', bias_initializer='zeros'))
+        model.add(LSTM(output_dim=256, activation='relu',
+            kernel_initializer='ones', bias_initializer='zeros'))
+        model.add(Dense(output_dim=self.actionCnt, activation='linear',
+            kernel_initializer=RandomNormal(0, 0.001), bias_initializer='zeros'))
 
         opt = RMSprop(lr=0.00025)
         model.compile(loss='mse', optimizer=opt)
