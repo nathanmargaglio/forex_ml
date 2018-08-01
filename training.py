@@ -40,9 +40,9 @@ class Brain:
     def _createModel(self):
         model = Sequential()
 
-        model.add(Dense(output_dim=128, activation='relu', input_dim=stateCnt))
+        model.add(Dense(output_dim=128, activation='relu', input_dim=self.stateCnt))
         model.add(Dense(output_dim=128, activation='relu'))
-        model.add(Dense(output_dim=actionCnt, activation='linear'))
+        model.add(Dense(output_dim=self.actionCnt, activation='linear'))
 
         opt = RMSprop(lr=0.00025)
         model.compile(loss='mse', optimizer=opt)
@@ -93,7 +93,7 @@ class Agent:
         self.steps = 0
         self.epsilon = MAX_EPSILON
 
-        self.brain = Brain(stateCnt, actionCnt)
+        self.brain = Brain(self.stateCnt, self.actionCnt)
         self.memory = Memory(MEMORY_CAPACITY)
 
     def act(self, s):
@@ -145,7 +145,7 @@ class Agent:
 
 
 class Environment:
-    def __init__(self, df, state_variables):
+    def __init__(self, data, ds):
         """Class to manage an agent to train it's Brain
 
         Args:
@@ -154,7 +154,9 @@ class Environment:
         """
 
         self.actions = {0: 'pos_short', 1: 'pos_neutral', 2: 'pos_long'}
-        self.state_variables = state_variables
+        self.state_variables = ds.columns
+
+        df = data.join(ds)
 
         # init portfolio
         df.portfolio = 0.0
@@ -301,6 +303,7 @@ class Environment:
         plt.plot(self.df.portfolio / 1000.0, 'b-')
         plt.plot(1 - self.df.next_open / self.df.at[self.df.index[0], 'next_open'], 'r-')
         # plt.plot(self.df.index, self.df.next_open, 'r-')
+        plt.show()
         self.fig.canvas.draw()
 
     def act(self, action):
