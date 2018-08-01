@@ -12,7 +12,7 @@ years = ['2012', '2013', '2014', '2015', '2016', '2017']
 months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER']
 
 MEMORY_CAPACITY = 1000
-BATCH_SIZE = 64
+BATCH_SIZE = 480
 
 GAMMA = 0.99
 
@@ -51,7 +51,7 @@ class Brain:
         model.add(Dense(output_dim=self.actionCnt, activation='linear',
             kernel_initializer=RandomNormal(0, 0.001), bias_initializer='zeros'))
 
-        opt = RMSprop(lr=0.00025)
+        opt = Adam(lr=0.00025)
         model.compile(loss='mse', optimizer=opt)
 
         return model
