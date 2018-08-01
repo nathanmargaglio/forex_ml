@@ -84,7 +84,7 @@ class Memory:   # stored as ( s, a, r, s_ )
 
 
 class Agent:
-    def __init__(self, stateCnt, actionCnt):
+    def __init__(self, stateCnt, actionCnt, weights=None):
         """Class to manage an agent to train it's Brain
 
         Args:
@@ -100,7 +100,7 @@ class Agent:
         self.steps = 0
         self.epsilon = MAX_EPSILON
 
-        self.brain = Brain(self.stateCnt, self.actionCnt)
+        self.brain = Brain(self.stateCnt, self.actionCnt, weights)
         self.memory = Memory(MEMORY_CAPACITY)
 
     def act(self, s):
@@ -292,7 +292,8 @@ class Environment:
 
     def render(self):
         if self.current_datetime.hour or self.current_datetime.minute:
-            return
+            pass#return
+
         plt.clf()
         index = self.df.index.get_loc(self.current_datetime)
         pf_col = self.df.columns.get_loc('portfolio')
