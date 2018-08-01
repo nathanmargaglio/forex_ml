@@ -41,22 +41,30 @@ class Brain:
     def _createModel(self):
         model = Sequential()
 
+        """
         model.add(Reshape(target_shape=(1, self.stateCnt)))
-        model.add(Dense(output_dim=256, activation='relu', input_shape=(1, self.stateCnt),
+        model.add(Dense(output_dim=256, activation='elu', input_shape=(1, self.stateCnt),
             kernel_initializer='ones', bias_initializer='zeros'))
-        model.add(Dense(output_dim=256, activation='relu',
+        model.add(Dense(output_dim=256, activation='elu',
             kernel_initializer='ones', bias_initializer='zeros'))
-        model.add(LSTM(output_dim=256, activation='relu',
+        model.add(LSTM(output_dim=256, activation='elu',
             kernel_initializer='ones', bias_initializer='zeros'))
-        model.add(Dense(output_dim=self.actionCnt, activation='linear',
+        model.add(Dense(output_dim=self.actionCnt, activation='elu',
             kernel_initializer=RandomNormal(0, 0.001), bias_initializer='zeros'))
+        """
 
-        opt = Adam(lr=0.00025)
-        model.compile(loss='mse', optimizer=opt)
+        model.add(Reshape(target_shape=(1, self.stateCnt)))
+        model.add(Dense(output_dim=256, activation='elu', input_shape=(1, self.stateCnt)))
+        model.add(Dense(output_dim=256, activation='elu'))
+        model.add(LSTM(output_dim=256, activation='elu'))
+        model.add(Dense(output_dim=self.actionCnt, activation='elu'))
+
+        opt = Adam(lr=0.0025)
+        model.compile(loss='msle', optimizer=opt)
 
         return model
 
-    def train(self, x, y, epoch=1, verbose=0, batch_size=64):
+    def train(self, x, y, epoch=1, verbose=0, batch_size=BATCH_SIZE):
         self.model.fit(x, y, batch_size=batch_size, nb_epoch=epoch, verbose=verbose)
 
     def predict(self, s):
@@ -108,6 +116,7 @@ class Agent:
         if random.random() < self.epsilon:
             return random.randint(0, self.actionCnt - 1)
 
+        prediction = self.brain.predictOne(s)
         return np.argmax(self.brain.predictOne(s))
 
     def observe(self, sample):  # in (s, a, r, s_) format
