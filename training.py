@@ -3,25 +3,23 @@ from keras.layers import *
 from keras.optimizers import *
 from keras.initializers import *
 
+from logger import setup_custom_logger
 import matplotlib.pyplot as plt
 import numpy as np
 import random
-
-pairs = ['AUDJPY', 'AUDNZD', 'AUDUSD', 'CADJPY', 'CHFJPY', 'EURGBP', 'EURJPY', 'EURUSD', 'GBPJPY', 'GBPUSD', 'NZDUSD', 'USDCAD']
-years = ['2012', '2013', '2014', '2015', '2016', '2017']
-months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER']
 
 MEMORY_CAPACITY = 1000
 BATCH_SIZE = 480
 
 GAMMA = 0.99
 
-MAX_EPSILON = 0 # 0 for no random
+MAX_EPSILON = 0.1 # 0 for no random
 LAMBDA = 0.001      # speed of decay
 
+STARTING_PORTFOLIO = 1000.0
 
 class Brain:
-    def __init__(self, stateCnt, actionCnt, weights_h5=None):
+    def __init__(self, stateCnt, actionCnt, instance_name='', weights_h5=None):
         """Class to create and train a neural network for prediction.
 
         Args:
@@ -31,6 +29,10 @@ class Brain:
                 None if to not load from any file.
 
         """
+
+        self.lg = setup_custom_logger('Bain: ' + instance_name, instance_name)
+        self.lg.debug('Bain Initializing...')
+
         self.stateCnt = stateCnt
         self.actionCnt = actionCnt
 
@@ -55,8 +57,14 @@ class Brain:
 
         model.add(Reshape(target_shape=(1, self.stateCnt)))
         model.add(Dense(output_dim=256, activation='elu', input_shape=(1, self.stateCnt)))
+        model.add(BatchNormalization())
+
         model.add(Dense(output_dim=256, activation='elu'))
+        model.add(BatchNormalization())
+
         model.add(LSTM(output_dim=256, activation='elu'))
+        model.add(BatchNormalization())
+
         model.add(Dense(output_dim=self.actionCnt, activation='elu'))
 
         opt = Adam(lr=0.0025)
@@ -77,8 +85,11 @@ class Brain:
 class Memory:   # stored as ( s, a, r, s_ )
     samples = []
 
-    def __init__(self, capacity):
+    def __init__(self, capacity, instance_name=''):
         self.capacity = capacity
+
+        self.lg = setup_custom_logger('Memory: ' + instance_name, instance_name)
+        self.lg.debug('Memory initializing...')
 
     def add(self, sample):
         self.samples.append(sample)
@@ -92,7 +103,7 @@ class Memory:   # stored as ( s, a, r, s_ )
 
 
 class Agent:
-    def __init__(self, stateCnt, actionCnt, weights=None):
+    def __init__(self, stateCnt, actionCnt, instance_name='', weights=None):
         """Class to manage an agent to train it's Brain
 
         Args:
@@ -102,14 +113,20 @@ class Agent:
                 None if to not load from any file.
 
         """
+        self.lg = setup_custom_logger('Agent: ' + instance_name, instance_name)
+        self.lg.debug('Agent Initializing...')
+        self.instance_dir = 'data/instances/' + instance_name + '/'
+
         self.stateCnt = stateCnt
         self.actionCnt = actionCnt
 
         self.steps = 0
         self.epsilon = MAX_EPSILON
 
-        self.brain = Brain(self.stateCnt, self.actionCnt, weights)
-        self.memory = Memory(MEMORY_CAPACITY)
+        self.brain = Brain(self.stateCnt, self.actionCnt, instance_name, weights)
+        self.memory = Memory(MEMORY_CAPACITY, instance_name)
+
+        self.lg.debug('Agent Initialized.')
 
     def act(self, s):
         # Random actions
@@ -117,6 +134,7 @@ class Agent:
             return random.randint(0, self.actionCnt - 1)
 
         prediction = self.brain.predictOne(s)
+        self.lg.debug('Prediction Vector: ' + str(prediction))
         return np.argmax(self.brain.predictOne(s))
 
     def observe(self, sample):  # in (s, a, r, s_) format
@@ -161,13 +179,17 @@ class Agent:
 
 
 class Environment:
-    def __init__(self, data, ds):
+    def __init__(self, data, ds, instance_name='', render_figures = True):
         """Class to manage an agent to train it's Brain
 
         Args:
             df (DataFrame): the training data
 
         """
+
+        self.lg = setup_custom_logger('Environment: ' + instance_name, instance_name)
+        self.lg.debug('Environment initializing...')
+        self.instance_dir = 'data/instances/' + instance_name + '/'
 
         self.actions = {0: 'pos_short', 1: 'pos_neutral', 2: 'pos_long'}
         self.state_variables = ds.columns
@@ -176,8 +198,7 @@ class Environment:
 
         df = df[~df.isnull().any(axis=1)]
         # init portfolio
-        df['portfolio'] = 0.0
-        df.at[df.index[0], 'portfolio'] = 1000.0
+        df['portfolio'] = STARTING_PORTFOLIO
         df.pos_short = 0
         df.pos_neutral = 0
         df.pos_long = 0
@@ -193,8 +214,13 @@ class Environment:
         self.current_datetime = self.df.index[0]
         self.canvas = {'portfolio': [], 'next_open': [], 'index': []}
 
-        plt.ion()
-        self.fig, self.ax = plt.subplots()
+        self.render_figures = render_figures
+        self.lg.debug('Rendering Figures: ' + str(self.render_figures))
+        if self.render_figures:
+            plt.ion()
+            self.fig, self.ax = plt.subplots()
+
+        self.lg.debug('Environment initialized.')
 
     def run(self, agent):
         self.reset()
@@ -202,7 +228,12 @@ class Environment:
         R = 0
 
         done = None
+        index = 0
         while not done:
+            if self.df.at[self.current_datetime, 'portfolio'] <= 0:
+                self.df.at[self.current_datetime, 'portfolio'] = STARTING_PORTFOLIO
+
+            self.lg.info('DT: ' + str(self.current_datetime))
             # get the agent's action at state s
             a = agent.act(s)
 
@@ -210,6 +241,7 @@ class Environment:
             s_, r, done = self.act(a)
 
             if done:  # terminal state
+                self.lg.info('Done!')
                 s_ = None
 
             # give the agent the observation data
@@ -223,17 +255,19 @@ class Environment:
             s = s_  # current state is now the new state
             R += r  # we add the event's reward to our total
 
-            self.render()  # we render the environment
+            self.lg.info('Current Reward (' + str(index) + '): ' + str(R))
 
-        print("Total reward:", R)
+            if not index % 100:
+                self.lg.info("Saving data...")
+                agent.brain.model.save(self.instance_dir + "brain.h5")
+                self.df.to_pickle(self.instance_dir + '/data.pickle')
 
-    def calc_action(self, action):
-        if action == 'pos_neutral':
-            return 0
-        if action == 'pos_short':
-            return -1
-        if action == 'pos_long':
-            return 1
+            index += 1
+
+            if self.render_figures:
+                self.render()  # we render the environment
+
+        self.lg.info("Total Reward: " + str(R))
 
     def calc_portfolio(self, trade_size=100, spread=0.0001):
         index = self.df.index.get_loc(self.current_datetime)
@@ -262,19 +296,10 @@ class Environment:
         o = self.df.iat[index, open_col]
         d = trade_size * abs(a - a_0) * spread
 
-        return v_0 + a * trade_size * (c - o) - d
+        value = v_0 + a * trade_size * (c - o) - d
+        self.lg.info("Calculated Portfolio: " + str(value))
 
-    def _update_state(self, action):
-        """
-        Input: action and states
-        Ouput: new states and reward
-        """
-
-        self.df.at[self.current_datetime, self.actions[action]] = 1  # Apply action
-        p = self.calc_portfolio()  # Calculate the current portfolio
-        self.df.at[self.current_datetime, 'portfolio'] = p  # Save it
-        self.current_datetime = self._get_next_datetime(self.current_datetime)  # Increment
-        return np.asarray(self.df.loc[self.current_datetime][self.state_variables])
+        return value
 
     def _get_next_datetime(self, dt):
         _c = self.df.index.get_loc(dt)
@@ -286,8 +311,11 @@ class Environment:
 
     def _get_reward(self):
         try:
-            return np.log(self.df.at[self.current_datetime, 'portfolio'] /
-                          self.df.at[self._get_prev_datetime(self.current_datetime), 'portfolio'])
+            current_portfolio = self.df.at[self.current_datetime, 'portfolio']
+            previous_portfolio = self.df.at[self._get_prev_datetime(self.current_datetime), 'portfolio']
+            self.lg.info('Current Portfolio: ' + str(current_portfolio))
+            self.lg.info('Previous Portfolio: ' + str(previous_portfolio))
+            return np.log(current_portfolio / previous_portfolio)
         except IndexError as e:
             return 0
 
@@ -318,7 +346,7 @@ class Environment:
 
         plt.title(str(cur.name) + ": " + str(cur.portfolio))
         plt.xlim(self.df.index[0], self.current_datetime)
-        plt.plot(self.df.portfolio / 1000.0, 'b-')
+        plt.plot(1 - self.df.portfolio / STARTING_PORTFOLIO, 'b-')
         plt.plot(1 - self.df.next_open / self.df.at[self.df.index[0], 'next_open'], 'r-')
         # plt.plot(self.df.index, self.df.next_open, 'r-')
         plt.show()
@@ -328,30 +356,20 @@ class Environment:
         self.state = self._update_state(action)
         reward = self._get_reward()
         game_over = self._is_over()
+        #print(self.df.loc[self.current_datetime])
+        self.current_datetime = self._get_next_datetime(self.current_datetime)  # Increment
         return self.state, reward, game_over
+
+    def _update_state(self, action):
+        """
+        Input: action and states
+        Ouput: new states and reward
+        """
+
+        self.df.at[self.current_datetime, self.actions[action]] = 1  # Apply action
+        p = self.calc_portfolio()  # Calculate the current portfolio
+        self.df.at[self.current_datetime, 'portfolio'] = p  # Save it
+        return np.asarray(self.df.loc[self.current_datetime][self.state_variables])
 
     def reset(self):
         self.current_datetime = self.df.index[0]
-
-
-if __name__ == "__main__":
-    import preprocess as pp
-    df = pp.get_pickle('2012')
-    df = df[df.pair == "EUR/USD"]
-    df['next_open'] = df.open.shift(-1)
-    dff = df.copy()
-
-    df = pp.calculate_market_variables(dff)
-    df = pp.calculate_meta_variables(df)
-    df['portfolio'] = 0.0
-
-    use_columns = [col for col in df.columns if '_log' in col]
-    use_columns += ['day_of_week', 'hour', 'minute', 'pos_short', 'pos_neutral', 'pos_long']
-
-    env = Environment(df, use_columns)
-    stateCnt = len(use_columns)
-    actionCnt = 3
-
-    agent = Agent(stateCnt, actionCnt)
-    env.run(agent)
-    agent.brain.model.save("brain.h5")
