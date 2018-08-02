@@ -65,10 +65,10 @@ class Brain:
         model.add(LSTM(output_dim=256, activation='elu'))
         model.add(BatchNormalization())
 
-        model.add(Dense(output_dim=self.actionCnt, activation='elu'))
+        model.add(Dense(output_dim=self.actionCnt, activation='linear'))
 
         opt = Adam(lr=0.0025)
-        model.compile(loss='msle', optimizer=opt)
+        model.compile(loss='mse', optimizer=opt)
 
         return model
 
