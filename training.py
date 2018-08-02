@@ -43,7 +43,6 @@ class Brain:
     def _createModel(self):
         model = Sequential()
 
-        """
         model.add(Reshape(target_shape=(1, self.stateCnt)))
         model.add(Dense(output_dim=256, activation='elu', input_shape=(1, self.stateCnt),
             kernel_initializer='ones', bias_initializer='zeros'))
@@ -51,21 +50,19 @@ class Brain:
             kernel_initializer='ones', bias_initializer='zeros'))
         model.add(LSTM(output_dim=256, activation='elu',
             kernel_initializer='ones', bias_initializer='zeros'))
-        model.add(Dense(output_dim=self.actionCnt, activation='elu',
+        model.add(Dense(output_dim=self.actionCnt, activation='linear',
             kernel_initializer=RandomNormal(0, 0.001), bias_initializer='zeros'))
-        """
 
+        """
         model.add(Reshape(target_shape=(1, self.stateCnt)))
         model.add(Dense(output_dim=256, activation='elu', input_shape=(1, self.stateCnt)))
         model.add(BatchNormalization())
-
         model.add(Dense(output_dim=256, activation='elu'))
-        model.add(BatchNormalization())
-
+        model.add(BatchNormalization())will python keep running in sleep
         model.add(LSTM(output_dim=256, activation='elu'))
         model.add(BatchNormalization())
-
         model.add(Dense(output_dim=self.actionCnt, activation='linear'))
+        """
 
         opt = Adam(lr=0.0025)
         model.compile(loss='mse', optimizer=opt)
@@ -357,7 +354,8 @@ class Environment:
         reward = self._get_reward()
         game_over = self._is_over()
         #print(self.df.loc[self.current_datetime])
-        self.current_datetime = self._get_next_datetime(self.current_datetime)  # Increment
+        if not game_over:
+            self.current_datetime = self._get_next_datetime(self.current_datetime)  # Increment
         return self.state, reward, game_over
 
     def _update_state(self, action):
