@@ -255,7 +255,7 @@ class Environment:
             s = s_  # current state is now the new state
             R += r  # we add the event's reward to our total
 
-            self.lg.info('Current Reward (' + str(index) + '): ' + str(R))
+            self.lg.info('Current Reward (' + str(index) + '): ' + str(r))
 
             if not index % 100:
                 self.lg.info("Saving data...")
@@ -297,7 +297,6 @@ class Environment:
         d = trade_size * abs(a - a_0) * spread
 
         value = v_0 + a * trade_size * (c - o) - d
-        self.lg.info("Calculated Portfolio: " + str(value))
 
         return value
 
