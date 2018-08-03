@@ -235,7 +235,7 @@ class Environment:
 
             # Simulate every action
             for _a in range(len(self.actions)):
-                s_, r, _done = self.react(_a)
+                s_, r, _done = self.react(_a, False)
                 agent.observe((s, _a, r, s_))
 
             # get the agent's action at state s
@@ -355,8 +355,11 @@ class Environment:
         plt.show()
         self.fig.canvas.draw()
 
-    def react(self, action):
-        _state = self._get_updated_state(action)
+    def react(self, action, apply=True):
+        if apply:
+            _state = self._update_state(action)
+        else:
+            _state = self._get_updated_state(action)
         reward = self._get_reward()
         game_over = self._is_over()
         #print(self.df.loc[self.current_datetime])
