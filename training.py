@@ -13,7 +13,7 @@ BATCH_SIZE = 480
 
 GAMMA = 0.99
 
-MAX_EPSILON = 0.1 # 0 for no random
+MAX_EPSILON = 0. # 0 for no random
 LAMBDA = 0.001      # speed of decay
 
 STARTING_PORTFOLIO = 1000.0
@@ -30,20 +30,17 @@ class Brain:
 
         """
 
-        self.lg = setup_custom_logger('Bain: ' + instance_name, instance_name)
-        self.lg.debug('Bain Initializing...')
+        self.lg = setup_custom_logger('Brain: ' + instance_name, instance_name)
 
         self.stateCnt = stateCnt
         self.actionCnt = actionCnt
 
-        self.model = self._createModel()
-        if weights_h5:
-            self.model.load_weights(weights_h5)
+        self.model = self._createModel(weights_h5)
 
-    def _createModel(self):
+    def _createModel(self, weights):
         model = Sequential()
 
-        model.add(Reshape(target_shape=(1, self.stateCnt)))
+        model.add(Reshape(input_shape=(self.stateCnt, ), target_shape=(1, self.stateCnt)))
         model.add(Dense(output_dim=256, activation='elu', input_shape=(1, self.stateCnt),
             kernel_initializer='ones', bias_initializer='zeros'))
         model.add(Dense(output_dim=256, activation='elu',
@@ -66,6 +63,10 @@ class Brain:
 
         opt = Adam(lr=0.0025)
         model.compile(loss='mse', optimizer=opt)
+
+        if weights:
+            self.lg.debug('Loading weights...')
+            model.load_weights(weights)
 
         return model
 
@@ -383,4 +384,4 @@ class Environment:
         return np.asarray(self.df.loc[self.current_datetime][self.state_variables])
 
     def reset(self):
-        self.current_datetime = self.df.index[0]
+        self.current_datetime = self.df.index[-10]
