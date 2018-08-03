@@ -231,7 +231,7 @@ class Environment:
             if self.df.at[self.current_datetime, 'portfolio'] <= 0:
                 self.df.at[self.current_datetime, 'portfolio'] = STARTING_PORTFOLIO
 
-            self.lg.info('DT: ' + str(self.current_datetime))
+            self.lg.info('~ DT: ' + str(self.current_datetime))
 
             # Simulate every action
             for _a in range(len(self.actions)):
@@ -259,6 +259,12 @@ class Environment:
             s = s_  # current state is now the new state
             R += r  # we add the event's reward to our total
 
+            current_portfolio = self.df.at[self.current_datetime, 'portfolio']
+            previous_portfolio = self.df.at[self._get_prev_datetime(self.current_datetime), 'portfolio']
+
+            self.lg.info('Action: ' + str(self.actions[a]) + ' ('+ str(a) + ')')
+            self.lg.info('Previous Portfolio: ' + str(previous_portfolio))
+            self.lg.info('Current Portfolio: ' + str(current_portfolio))
             self.lg.info('Current Reward (' + str(index) + '): ' + str(r))
 
             if not index % 100:
@@ -270,6 +276,11 @@ class Environment:
 
             if self.render_figures:
                 self.render()  # we render the environment
+
+            if not done:
+                # increment to next time
+                self.current_datetime = self._get_next_datetime(self.current_datetime)
+
 
         self.lg.info("Total Reward: " + str(R))
 
@@ -316,8 +327,6 @@ class Environment:
         try:
             current_portfolio = self.df.at[self.current_datetime, 'portfolio']
             previous_portfolio = self.df.at[self._get_prev_datetime(self.current_datetime), 'portfolio']
-            self.lg.info('Current Portfolio: ' + str(current_portfolio))
-            self.lg.info('Previous Portfolio: ' + str(previous_portfolio))
             return np.log(current_portfolio / previous_portfolio)
         except IndexError as e:
             return 0
@@ -363,8 +372,6 @@ class Environment:
         reward = self._get_reward()
         game_over = self._is_over()
         #print(self.df.loc[self.current_datetime])
-        if not game_over:
-            self.current_datetime = self._get_next_datetime(self.current_datetime)  # Increment
         return _state, reward, game_over
 
     def _get_updated_state(self, action):
