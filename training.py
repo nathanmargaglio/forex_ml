@@ -231,18 +231,24 @@ class Environment:
                 self.df.at[self.current_datetime, 'portfolio'] = STARTING_PORTFOLIO
 
             self.lg.info('DT: ' + str(self.current_datetime))
+
+            # Simulate every action
+            for _a in range(len(self.actions)):
+                s_, r, _done = self.react(_a)
+                agent.observe((s, _a, r, s_))
+
             # get the agent's action at state s
-            a = agent.act(s)
+            a = agent.act(s) # to fetch from brain
 
             # apply the action to the environment
-            s_, r, done = self.act(a)
+            s_, r, done = self.react(a)
 
             if done:  # terminal state
                 self.lg.info('Done!')
                 s_ = None
 
             # give the agent the observation data
-            agent.observe((s, a, r, s_))
+            #  agent.observe((s, a, r, s_))
 
             agent.replay()
             """ force the agent to relive this horrific event
@@ -266,7 +272,7 @@ class Environment:
 
         self.lg.info("Total Reward: " + str(R))
 
-    def calc_portfolio(self, trade_size=100, spread=0.0001):
+    def calc_portfolio(self, _df, trade_size=100, spread=0.0001):
         index = self.df.index.get_loc(self.current_datetime)
 
         pf_col = self.df.columns.get_loc('portfolio')
@@ -275,26 +281,25 @@ class Environment:
         close_col = self.df.columns.get_loc('next_open')
         open_col = self.df.columns.get_loc('open')
 
-        v_0 = self.df.iat[index - 1, pf_col]
+        v_0 = _df.iat[index - 1, pf_col]
 
         a_0 = 0
-        if self.df.iat[index - 1, long_col]:
+        if _df.iat[index - 1, long_col]:
             a_0 = 1
-        elif self.df.iat[index - 1, short_col]:
+        elif _df.iat[index - 1, short_col]:
             a_0 = -1
 
         a = 0
-        if self.df.iat[index, long_col]:
+        if _df.iat[index, long_col]:
             a = 1
-        elif self.df.iat[index, short_col]:
+        elif _df.iat[index, short_col]:
             a = -1
 
-        c = self.df.iat[index, close_col]
-        o = self.df.iat[index, open_col]
+        c = _df.iat[index, close_col]
+        o = _df.iat[index, open_col]
         d = trade_size * abs(a - a_0) * spread
 
         value = v_0 + a * trade_size * (c - o) - d
-        self.lg.info("Calculated Portfolio: " + str(value))
 
         return value
 
@@ -349,14 +354,22 @@ class Environment:
         plt.show()
         self.fig.canvas.draw()
 
-    def act(self, action):
-        self.state = self._update_state(action)
+    def react(self, action):
+        _state = self._get_updated_state(action)
         reward = self._get_reward()
         game_over = self._is_over()
         #print(self.df.loc[self.current_datetime])
         if not game_over:
             self.current_datetime = self._get_next_datetime(self.current_datetime)  # Increment
-        return self.state, reward, game_over
+        return _state, reward, game_over
+
+    def _get_updated_state(self, action):
+        _df = self.df.copy()
+        _df.at[self.current_datetime, self.actions[action]] = 1  # Apply action
+        p = self.calc_portfolio(_df)  # Calculate the current portfolio
+        _df.at[self.current_datetime, 'portfolio'] = p  # Save it
+        return np.asarray(_df.loc[self.current_datetime][self.state_variables])
+
 
     def _update_state(self, action):
         """
@@ -365,7 +378,7 @@ class Environment:
         """
 
         self.df.at[self.current_datetime, self.actions[action]] = 1  # Apply action
-        p = self.calc_portfolio()  # Calculate the current portfolio
+        p = self.calc_portfolio(self.df)  # Calculate the current portfolio
         self.df.at[self.current_datetime, 'portfolio'] = p  # Save it
         return np.asarray(self.df.loc[self.current_datetime][self.state_variables])
 
