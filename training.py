@@ -384,4 +384,4 @@ class Environment:
         return np.asarray(self.df.loc[self.current_datetime][self.state_variables])
 
     def reset(self):
-        self.current_datetime = self.df.index[-10]
+        self.current_datetime = self.df.index[0]
