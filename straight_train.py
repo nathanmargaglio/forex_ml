@@ -52,6 +52,6 @@ filepath="data/weights-improvement-{epoch:02d}-{val_acc:.2f}.hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 callbacks_list = [checkpoint]
 
-history = model.fit(input_data, output_data, validation_split=atch_size=10, epochs=250, callbacks=callbacks_list, verbose=1)
+history = model.fit(input_data, output_data, validation_split=0.2, batch_size=10, epochs=250, callbacks=callbacks_list, verbose=1)
 np.save('data/history', np.array([history.history])),
 model.save('data/nn.h5')
