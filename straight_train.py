@@ -32,17 +32,11 @@ for pair in pairs:
 
 df = dps['EUR/USD'].join(ds)[~dps['EUR/USD'].join(ds).isna().any(axis=1)]
 
-ver_amnt = int(len(df)*0.2)
-
-input_data = np.array(df[state_cols])[:-ver_amnt]
-output_data = np.array(df[['log_change_short', 'log_change_neutral', 'log_change_long']])[:-ver_amnt]
+input_data = np.array(df[state_cols])
+output_data = np.array(df[['log_change_short', 'log_change_neutral', 'log_change_long']])
 #output_data[:,0] + (output_data[:,0] > 0.0004).astype(int)-1
 #output_data[:,2] + (output_data[:,2] > 0.0004).astype(int)-1
 output_data = to_categorical(np.argmax(output_data, axis=1), num_classes=3)
-
-input_verify = np.array(df[state_cols])[-ver_amnt:]
-output_verify = np.array(df[['log_change_short', 'log_change_neutral', 'log_change_long']])[-ver_amnt:]
-output_verify = to_categorical(np.argmax(output_verify, axis=1), num_classes=3)
 
 model = Sequential()
 
@@ -58,6 +52,6 @@ filepath="data/weights-improvement-{epoch:02d}-{val_acc:.2f}.hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 callbacks_list = [checkpoint]
 
-history = model.fit(input_data, output_data, batch_size=1, epochs=250, callbacks=callbacks_list, verbose=1)
-np.save('data/history', np.array([history.history]))
+history = model.fit(input_data, output_data, validation_split=atch_size=10, epochs=250, callbacks=callbacks_list, verbose=1)
+np.save('data/history', np.array([history.history])),
 model.save('data/nn.h5')
